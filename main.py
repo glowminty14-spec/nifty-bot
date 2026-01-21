@@ -47,22 +47,27 @@ def run_strategy():
         # 1. Fetch Data
         df = yf.download(SYMBOL, period="5d", interval=INTERVAL, progress=False)
 
-        # 2. DEBUG: Print columns to see what we got
+        # 2. DEBUG: Print raw structure
         print(f"Raw Columns: {df.columns}")
 
         if df.empty:
-            print("Data is empty. Yahoo might be blocking or no data available.")
+            print("Data is empty.")
             return
 
-        # 3. SMART CLEANER (The Fix)
-        # If columns are complex (MultiIndex), flatten them
+        # 3. BULLETPROOF CLEANER (The Fix)
+        # We check WHICH level has the word "Close" and use that one.
         if isinstance(df.columns, pd.MultiIndex):
-            # values(-1) gets the last level ('Close', 'Open') regardless of where Ticker is
-            df.columns = df.columns.get_level_values(-1)
+            level_0 = df.columns.get_level_values(0)
+            level_1 = df.columns.get_level_values(1) if df.columns.nlevels > 1 else []
+            
+            if "Close" in level_0:
+                df.columns = level_0
+            elif "Close" in level_1:
+                df.columns = level_1
         
-        # Double check if 'Close' exists now
+        # Final Check
         if "Close" not in df.columns:
-            print(f"CRITICAL: 'Close' column missing. Available: {df.columns}")
+            print(f"CRITICAL: Still couldn't find 'Close'. Columns are: {df.columns}")
             return
 
         if len(df) < 50:
@@ -79,7 +84,7 @@ def run_strategy():
         ema50 = c["EMA50"]
         htf_bias = "BEARISH" if ema20 < ema50 else "BULLISH"
         
-        print(f"Price: {close} | EMA20: {ema20:.2f} | Trend: {htf_bias}")
+        print(f"SUCCESS: Price: {int(close)} | EMA20: {int(ema20)} | Trend: {htf_bias}")
 
         # 5. Signal Logic
         msg = ""
@@ -104,5 +109,4 @@ def run_strategy():
         print(f"Error Details: {e}")
 
 if __name__ == "__main__":
-    # We allow it to run even if market is closed just to test the connection once
     run_strategy()
