@@ -47,25 +47,28 @@ def run_strategy():
         # 1. Fetch Data
         df = yf.download(SYMBOL, period="5d", interval=INTERVAL, progress=False)
 
-        # 2. DEBUG: Print raw structure
+        # 2. DEBUG: Print raw structure (Helps us see if Yahoo changes things)
         print(f"Raw Columns: {df.columns}")
 
         if df.empty:
             print("Data is empty.")
             return
 
-        # 3. BULLETPROOF CLEANER (The Fix)
-        # We check WHICH level has the word "Close" and use that one.
+        # ==================================================
+        # 3. THE CRITICAL FIX (The Cleaner)
+        # ==================================================
+        # This block looks for "Close" in all levels of the column headers
         if isinstance(df.columns, pd.MultiIndex):
             level_0 = df.columns.get_level_values(0)
             level_1 = df.columns.get_level_values(1) if df.columns.nlevels > 1 else []
             
+            # Check which level has the price data and use that one
             if "Close" in level_0:
                 df.columns = level_0
             elif "Close" in level_1:
                 df.columns = level_1
         
-        # Final Check
+        # Final Check: If we still don't have "Close", stop here.
         if "Close" not in df.columns:
             print(f"CRITICAL: Still couldn't find 'Close'. Columns are: {df.columns}")
             return
